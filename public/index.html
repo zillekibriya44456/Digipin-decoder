@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DIGIPIN Decoder</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <div class="background-animation"></div>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <i class="fa-solid fa-map-location-dot"></i>
+                <h1>DIGIPIN Decoder</h1>
+            </div>
+            <p>Unlock precise locations with a single code.</p>
+        </header>
+
+        <main>
+            <div class="input-card glass">
+                <div class="input-wrapper">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="digipin-input" placeholder="Enter DIGIPIN (e.g., 39J-438-TJC7)"
+                        autocomplete="off">
+                </div>
+                <button id="decode-btn">Decode <i class="fa-solid fa-arrow-right"></i></button>
+            </div>
+            <div id="error-message" class="error glass hidden"></div>
+
+            <div id="result-section" class="result-section hidden">
+                <div class="details-grid">
+                    <div class="detail-card glass">
+                        <div class="icon-box"><i class="fa-solid fa-road"></i></div>
+                        <div class="detail-content">
+                            <span class="label">Street / Area</span>
+                            <span class="value" id="res-street">-</span>
+                        </div>
+                    </div>
+                    <div class="detail-card glass">
+                        <div class="icon-box"><i class="fa-solid fa-city"></i></div>
+                        <div class="detail-content">
+                            <span class="label">City / District</span>
+                            <span class="value" id="res-city">-</span>
+                        </div>
+                    </div>
+                    <div class="detail-card glass">
+                        <div class="icon-box"><i class="fa-solid fa-map"></i></div>
+                        <div class="detail-content">
+                            <span class="label">State</span>
+                            <span class="value" id="res-state">-</span>
+                        </div>
+                    </div>
+                    <div class="detail-card glass">
+                        <div class="icon-box"><i class="fa-solid fa-envelope"></i></div>
+                        <div class="detail-content">
+                            <span class="label">Postal Code</span>
+                            <span class="value" id="res-pincode">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="full-address-card glass">
+                    <h3><i class="fa-solid fa-location-dot"></i> Full Address</h3>
+                    <p id="res-address">Loading...</p>
+                    <button class="copy-btn" id="copy-btn" title="Copy to Clipboard"><i
+                            class="fa-regular fa-copy"></i></button>
+                </div>
+
+                <div class="map-container glass">
+                    <div id="map"></div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>Powered by India Post & OpenStreetMap</p>
+        </footer>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="script.js?v=2"></script>
+</body>
+
+</html>
