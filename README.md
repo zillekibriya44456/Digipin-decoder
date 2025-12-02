@@ -35,6 +35,7 @@ or
 yarn dev
 
 Now open: 👉 https://digipintolocation.online/
+
 📁 Project Structure ├── public/ │ ├── index.html # Main UI │ ├── script.js # Frontend logic │ └── style.css # Optional styles │ ├── server.js # Express backend API ├── package.json ├── .env.example # Env config template ├── Dockerfile # Docker build file ├── docker-compose.yml # Optional Redis support └── README.md 🛠️ Technology Stack
 
 🔧 Backend: Node.js, Express.js 🌐 Geocoding: Nominatim / Google Maps / Mapbox 🗺️ Maps: Leaflet.js + OpenStreetMap 📦 Caching (optional): Redis 🐳 Containerization: Docker 🧪 Testing: Jest + Supertest
