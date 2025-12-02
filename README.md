@@ -34,7 +34,7 @@ npm run dev
 or
 yarn dev
 
-Now open: 👉 http://localhost:4000
+Now open: 👉 https://digipin-decoder.onrender.com/
 
 📁 Project Structure ├── public/ │ ├── index.html # Main UI │ ├── script.js # Frontend logic │ └── style.css # Optional styles │ ├── server.js # Express backend API ├── package.json ├── .env.example # Env config template ├── Dockerfile # Docker build file ├── docker-compose.yml # Optional Redis support └── README.md 🛠️ Technology Stack
 
