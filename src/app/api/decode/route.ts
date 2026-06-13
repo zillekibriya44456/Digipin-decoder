@@ -10,7 +10,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "DIGIPIN is required" }, { status: 400 })
     }
 
-    const decoded = getLatLngFromDigiPin(digipin)
+    const sanitizedPin = digipin.replace(/\s+/g, "").toUpperCase()
+
+    let decoded;
+    try {
+      decoded = getLatLngFromDigiPin(sanitizedPin)
+    } catch (e: any) {
+      return NextResponse.json({ error: e.message || "Invalid DIGIPIN format" }, { status: 400 })
+    }
+
     if (!decoded) {
       return NextResponse.json({ error: "Invalid DIGIPIN format" }, { status: 400 })
     }
