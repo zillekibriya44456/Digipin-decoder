@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState, useRef, useMemo } from "react"
 import { MapContainer, TileLayer, Marker, Popup, useMap, ZoomControl, useMapEvents } from "react-leaflet"
 import "leaflet/dist/leaflet.css"
 import L from "leaflet"
+import { Layers, Maximize } from "lucide-react"
 
 // Fix Leaflet's default icon path issues in Next.js
 const icon = L.icon({
@@ -28,7 +29,7 @@ interface MapComponentProps {
   lat: number
   lng: number
   zoom?: number
-  markers?: { lat: number, lng: number, title: string }[]
+  markers?: { lat: number, lng: number, title: string, description?: string }[]
   onMapClick?: (lat: number, lng: number) => void
 }
 
@@ -52,33 +53,98 @@ function MapClickHandler({ onMapClick }: { onMapClick?: (lat: number, lng: numbe
 }
 
 export default function MapComponent({ lat, lng, zoom = 15, markers = [], onMapClick }: MapComponentProps) {
-  return (
-    <MapContainer 
-      center={[lat, lng]} 
-      zoom={zoom} 
-      style={{ height: "100%", width: "100%", borderRadius: "inherit", zIndex: 10 }}
-      zoomControl={false}
-    >
-      <TileLayer
-        attribution='&copy; <a href="https://carto.com/">Carto</a>'
-        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-        maxZoom={20}
-      />
-      <ZoomControl position="bottomright" />
-      <MapUpdater center={[lat, lng]} zoom={zoom} />
-      <MapClickHandler onMapClick={onMapClick} />
-      
-      {/* Primary Marker */}
-      <Marker position={[lat, lng]} icon={customMarkerIcon}>
-        <Popup>Target Location</Popup>
-      </Marker>
+  const [mapType, setMapType] = useState<"street" | "satellite">("street")
+  const containerRef = useRef<HTMLDivElement>(null)
 
-      {/* Additional Markers */}
-      {markers.map((marker, i) => (
-        <Marker key={i} position={[marker.lat, marker.lng]} icon={icon}>
-          <Popup>{marker.title}</Popup>
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen().catch(err => {
+        console.log(`Error attempting to enable full-screen mode: ${err.message}`)
+      })
+    } else {
+      document.exitFullscreen()
+    }
+  }
+
+  const markerRef = useRef<L.Marker>(null)
+  
+  const eventHandlers = useMemo(
+    () => ({
+      dragend() {
+        const marker = markerRef.current
+        if (marker != null) {
+          const position = marker.getLatLng()
+          if (onMapClick) onMapClick(position.lat, position.lng)
+        }
+      },
+    }),
+    [onMapClick],
+  )
+
+  return (
+    <div ref={containerRef} className="w-full h-full relative rounded-inherit">
+      {/* Custom Map Controls Layer */}
+      <div className="absolute top-4 right-4 z-[400] flex flex-col gap-2">
+        <button 
+          onClick={(e) => { e.preventDefault(); setMapType(mapType === "street" ? "satellite" : "street"); }}
+          className="bg-white dark:bg-zinc-800 p-2 rounded-xl shadow-lg border border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+          title="Toggle Map Style"
+        >
+          <Layers className="w-5 h-5 text-foreground" />
+        </button>
+        <button 
+          onClick={(e) => { e.preventDefault(); toggleFullscreen(); }}
+          className="bg-white dark:bg-zinc-800 p-2 rounded-xl shadow-lg border border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+          title="Toggle Fullscreen"
+        >
+          <Maximize className="w-5 h-5 text-foreground" />
+        </button>
+      </div>
+
+      <MapContainer 
+        center={[lat, lng]} 
+        zoom={zoom} 
+        style={{ height: "100%", width: "100%", borderRadius: "inherit", zIndex: 10 }}
+        zoomControl={false}
+      >
+        {mapType === "street" ? (
+          <TileLayer
+            attribution='&copy; <a href="https://carto.com/">Carto</a>'
+            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+            maxZoom={20}
+          />
+        ) : (
+          <TileLayer
+            attribution='&copy; <a href="https://www.esri.com/">Esri</a>'
+            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+            maxZoom={20}
+          />
+        )}
+        <ZoomControl position="bottomright" />
+        <MapUpdater center={[lat, lng]} zoom={zoom} />
+        <MapClickHandler onMapClick={onMapClick} />
+        
+        {/* Primary Draggable Marker */}
+        <Marker 
+          position={[lat, lng]} 
+          icon={customMarkerIcon}
+          draggable={!!onMapClick}
+          eventHandlers={eventHandlers}
+          ref={markerRef}
+        >
+          <Popup>Target Location<br/><span className="text-xs text-muted-foreground">Drag to reposition</span></Popup>
         </Marker>
-      ))}
-    </MapContainer>
+
+        {/* Additional Markers */}
+        {markers.map((marker, i) => (
+          <Marker key={i} position={[marker.lat, marker.lng]} icon={icon}>
+            <Popup>
+              <strong>{marker.title}</strong>
+              {marker.description && <p className="text-sm mt-1">{marker.description}</p>}
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
+    </div>
   )
 }

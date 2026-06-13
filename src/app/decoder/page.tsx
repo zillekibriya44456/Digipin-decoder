@@ -5,7 +5,8 @@ import { useSearchParams } from "next/navigation"
 import { Navbar } from "@/components/Navbar"
 import { Footer } from "@/components/Footer"
 import { Map } from "@/components/Map"
-import { Search, MapPin, Navigation, Compass, AlertCircle, Copy, Check, Loader2 } from "lucide-react"
+import { QRCodeGenerator } from "@/components/QRCodeGenerator"
+import { Search, MapPin, Navigation, Compass, AlertCircle, Copy, Check, Loader2, Share2, Map as MapIcon } from "lucide-react"
 
 function DecoderContent() {
   const searchParams = useSearchParams()
@@ -15,7 +16,27 @@ function DecoderContent() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [result, setResult] = useState<any>(null)
-  const [copied, setCopied] = useState(false)
+  
+  const [copiedCoords, setCopiedCoords] = useState(false)
+  const [copiedAddress, setCopiedAddress] = useState(false)
+  const [copiedPin, setCopiedPin] = useState(false)
+
+  const [nearbyPlaces, setNearbyPlaces] = useState<any[]>([])
+  const [nearbyLoading, setNearbyLoading] = useState(false)
+  const [nearbyType, setNearbyType] = useState("hospital")
+
+  const fetchNearby = async (lat: number, lng: number, type: string) => {
+    setNearbyLoading(true)
+    try {
+      const res = await fetch(`/api/nearby?lat=${lat}&lon=${lng}&type=${type}`)
+      const data = await res.json()
+      setNearbyPlaces(data.places || [])
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setNearbyLoading(false)
+    }
+  }
 
   const decodePin = async (pinToDecode: string) => {
     if (!pinToDecode.trim()) return
@@ -33,7 +54,8 @@ function DecoderContent() {
       
       if (!res.ok) throw new Error(data.error || "Failed to decode")
       
-      setResult(data)
+      setResult({ ...data, digipin: pinToDecode.toUpperCase() })
+      fetchNearby(data.latitude, data.longitude, nearbyType)
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -52,11 +74,25 @@ function DecoderContent() {
     decodePin(digipin)
   }
 
-  const handleCopy = () => {
-    if (result) {
-      navigator.clipboard.writeText(`${result.latitude}, ${result.longitude}`)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+  const handleCopy = (text: string, setCopied: React.Dispatch<React.SetStateAction<boolean>>) => {
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleShare = async () => {
+    if (result && navigator.share) {
+      try {
+        await navigator.share({
+          title: `DIGIPIN Location: ${result.digipin}`,
+          text: `Check out this exact location at DIGIPIN ${result.digipin}:\n${result.address}`,
+          url: `${window.location.origin}/location/${result.digipin}`,
+        })
+      } catch (err) {
+        console.error("Error sharing", err)
+      }
+    } else {
+      handleCopy(`${window.location.origin}/location/${result?.digipin}`, setCopiedPin) // fallback
     }
   }
 
@@ -105,16 +141,44 @@ function DecoderContent() {
           </div>
 
           {result && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-1 space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              
+              {/* Left Column: Data & QR */}
+              <div className="lg:col-span-4 space-y-6">
+                
+                {/* DIGIPIN Card */}
+                <div className="glass p-6 rounded-3xl bg-primary/5 border-primary/20 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-4 opacity-10">
+                    <MapIcon className="w-24 h-24 text-primary" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">DIGIPIN</h3>
+                  <div className="flex items-center justify-between relative z-10">
+                    <p className="font-bold text-3xl tracking-wider text-primary">{result.digipin}</p>
+                    <button 
+                      onClick={() => handleCopy(result.digipin, setCopiedPin)}
+                      className="p-2 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-primary/20 text-primary transition-colors"
+                      title="Copy DIGIPIN"
+                    >
+                      {copiedPin ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Location Details */}
                 <div className="glass p-6 rounded-3xl">
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
-                    <MapPin className="w-4 h-4" /> Location Details
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center justify-between">
+                    <span className="flex items-center gap-2"><MapPin className="w-4 h-4" /> Address</span>
+                    <button 
+                      onClick={() => handleCopy(result.address, setCopiedAddress)}
+                      className="p-1.5 rounded-md hover:bg-primary/10 text-primary transition-colors"
+                      title="Copy Address"
+                    >
+                      {copiedAddress ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                    </button>
                   </h3>
                   <div className="space-y-4">
                     <div>
-                      <p className="text-sm text-muted-foreground">Full Address</p>
-                      <p className="font-medium text-lg leading-tight mt-1">{result.address}</p>
+                      <p className="font-medium text-lg leading-tight">{result.address}</p>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
@@ -137,44 +201,114 @@ function DecoderContent() {
                   </div>
                 </div>
 
+                {/* Geospatial Data */}
                 <div className="glass p-6 rounded-3xl">
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
-                    <Compass className="w-4 h-4" /> Geospatial Data
+                    <Compass className="w-4 h-4" /> Coordinates
                   </h3>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Coordinates</p>
-                        <p className="font-medium font-mono tracking-tight">
-                          {result.latitude.toFixed(6)}, {result.longitude.toFixed(6)}
-                        </p>
-                      </div>
+                      <p className="font-medium font-mono tracking-tight text-lg">
+                        {result.latitude.toFixed(6)}, {result.longitude.toFixed(6)}
+                      </p>
                       <button 
-                        onClick={handleCopy}
+                        onClick={() => handleCopy(`${result.latitude}, ${result.longitude}`, setCopiedCoords)}
                         className="p-2 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-primary/20 text-primary transition-colors"
                         title="Copy Coordinates"
                       >
-                        {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                        {copiedCoords ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                       </button>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Accuracy Radius</p>
-                      <p className="font-medium text-emerald-500">{result.accuracy}</p>
+                      <p className="text-sm text-muted-foreground inline-block mr-2">Accuracy Radius:</p>
+                      <span className="font-medium text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-md text-sm">{result.accuracy}</span>
                     </div>
-                    <a 
-                      href={`https://www.google.com/maps/dir/?api=1&destination=${result.latitude},${result.longitude}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full py-3 mt-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl font-medium flex items-center justify-center gap-2 transition-colors"
-                    >
-                      <Navigation className="w-4 h-4" /> Navigate Here
-                    </a>
                   </div>
                 </div>
+
+                {/* Actions & QR */}
+                <div className="grid grid-cols-2 gap-4">
+                  <a 
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${result.latitude},${result.longitude}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="py-3 bg-primary hover:bg-primary/90 text-white rounded-2xl font-medium flex items-center justify-center gap-2 transition-colors shadow-lg shadow-primary/20"
+                  >
+                    <Navigation className="w-4 h-4" /> Navigate
+                  </a>
+                  <button 
+                    onClick={handleShare}
+                    className="py-3 bg-white/5 border border-white/10 hover:bg-white/10 rounded-2xl font-medium flex items-center justify-center gap-2 transition-colors"
+                  >
+                    <Share2 className="w-4 h-4" /> Share PIN
+                  </button>
+                </div>
+
+                <QRCodeGenerator 
+                  value={`${typeof window !== 'undefined' ? window.location.origin : 'https://digipin.io'}/location/${result.digipin}`} 
+                  title="Location QR Code"
+                />
               </div>
 
-              <div className="lg:col-span-2 h-[600px] glass p-2 rounded-3xl relative overflow-hidden">
-                <Map lat={result.latitude} lng={result.longitude} zoom={16} />
+              {/* Right Column: Map & Nearby */}
+              <div className="lg:col-span-8 space-y-6">
+                <div className="h-[500px] lg:h-[600px] glass p-2 rounded-3xl relative overflow-hidden">
+                  <Map 
+                    lat={result.latitude} 
+                    lng={result.longitude} 
+                    zoom={18} 
+                    markers={nearbyPlaces.map(p => ({
+                      lat: p.latitude, 
+                      lng: p.longitude, 
+                      title: p.name, 
+                      description: `${p.distance} km away`
+                    }))}
+                  />
+                </div>
+
+                <div className="glass p-6 rounded-3xl">
+                  <div className="flex flex-col md:flex-row items-center justify-between mb-6 gap-4">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                      <MapPin className="w-4 h-4" /> Nearby Explorer
+                    </h3>
+                    <div className="flex gap-2">
+                      {["hospital", "school", "restaurant", "atm"].map((t) => (
+                        <button
+                          key={t}
+                          onClick={() => {
+                            setNearbyType(t);
+                            fetchNearby(result.latitude, result.longitude, t);
+                          }}
+                          className={`px-4 py-2 text-xs font-bold rounded-xl transition-all capitalize ${nearbyType === t ? "bg-primary text-white shadow-md shadow-primary/20" : "bg-black/5 dark:bg-white/5 text-muted-foreground hover:bg-primary/10"}`}
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {nearbyLoading ? (
+                    <div className="flex items-center justify-center h-32">
+                      <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                    </div>
+                  ) : nearbyPlaces.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {nearbyPlaces.map((place, idx) => (
+                        <div key={idx} className="p-4 rounded-2xl bg-white/50 dark:bg-black/40 border border-white/20 dark:border-white/10 hover:border-primary/30 transition-colors">
+                          <p className="font-bold text-sm mb-1">{place.name}</p>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-muted-foreground capitalize">{place.type.replace("_", " ")}</span>
+                            <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-md">{place.distance} km</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center p-8 text-muted-foreground text-sm">
+                      No nearby {nearbyType}s found within 5km.
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}

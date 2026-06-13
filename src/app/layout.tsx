@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { NextAuthProvider } from "@/components/NextAuthProvider";
 import { AIAssistant } from "@/components/AIAssistant";
+import Script from "next/script";
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -56,8 +57,24 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "DIGIPIN Location Intelligence",
+    "description": "Decode, generate, and share highly accurate geospatial coordinates using standard 10-character DIGIPINs.",
+    "url": "https://digipin.io",
+    "applicationCategory": "UtilityApplication",
+    "operatingSystem": "All"
+  };
+
   return (
     <html lang="en" suppressHydrationWarning className="h-full antialiased">
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
       <body className={`${outfit.variable} min-h-full flex flex-col font-sans relative`}>
         <NextAuthProvider>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
@@ -67,6 +84,19 @@ export default function RootLayout({
             </div>
             {children}
             <AIAssistant />
+            <div id="google_translate_element" className="fixed bottom-4 left-4 z-50 opacity-50 hover:opacity-100 transition-opacity bg-white dark:bg-black rounded-lg overflow-hidden shadow-xl" />
+            <Script id="google-translate" strategy="lazyOnload">
+              {`
+                function googleTranslateElementInit() {
+                  new google.translate.TranslateElement({
+                    pageLanguage: 'en',
+                    includedLanguages: 'en,hi,kn,ta,te,bn,ur,mr,ml',
+                    layout: google.translate.TranslateElement.InlineLayout.SIMPLE
+                  }, 'google_translate_element');
+                }
+              `}
+            </Script>
+            <Script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" strategy="lazyOnload" />
           </ThemeProvider>
         </NextAuthProvider>
       </body>

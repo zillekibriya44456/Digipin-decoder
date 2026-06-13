@@ -1,13 +1,30 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect, Suspense } from "react"
+import { useSearchParams } from "next/navigation"
 import { Navbar } from "@/components/Navbar"
 import { Footer } from "@/components/Footer"
 import { Map } from "@/components/Map"
-import { MapPin, Navigation, Copy, Check, Target, Search, Share2, Bookmark } from "lucide-react"
+import { MapPin, Navigation, Copy, Check, Target, Search, Share2, Bookmark, Loader2 } from "lucide-react"
 
-export default function GeneratorPage() {
+import { QRCodeGenerator } from "@/components/QRCodeGenerator"
+
+function GeneratorContent() {
+  const searchParams = useSearchParams()
+  const autoGps = searchParams.get("action") === "gps"
+
+  const [addressMode, setAddressMode] = useState<"paste" | "structured">("paste")
   const [address, setAddress] = useState("")
+  
+  const [structuredAddress, setStructuredAddress] = useState({
+    houseNumber: "",
+    street: "",
+    area: "",
+    city: "",
+    state: "",
+    country: ""
+  })
+
   const [lat, setLat] = useState("")
   const [lng, setLng] = useState("")
   const [activeTab, setActiveTab] = useState<"address" | "coords">("address")
@@ -47,8 +64,26 @@ export default function GeneratorPage() {
 
   const handleAddressSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!address.trim()) return
-    generatePin({ address })
+    
+    let finalAddress = ""
+    if (addressMode === "paste") {
+      if (!address.trim()) return
+      finalAddress = address
+    } else {
+      const parts = [
+        structuredAddress.houseNumber,
+        structuredAddress.street,
+        structuredAddress.area,
+        structuredAddress.city,
+        structuredAddress.state,
+        structuredAddress.country
+      ].filter(Boolean)
+      
+      if (parts.length === 0) return
+      finalAddress = parts.join(", ")
+    }
+    
+    generatePin({ address: finalAddress })
   }
 
   const handleCoordsSubmit = (e: React.FormEvent) => {
@@ -57,7 +92,7 @@ export default function GeneratorPage() {
     generatePin({ latitude: parseFloat(lat), longitude: parseFloat(lng) })
   }
 
-  const handleGetCurrentLocation = () => {
+  const handleGetCurrentLocation = useCallback(() => {
     if (!navigator.geolocation) {
       setError("Geolocation is not supported by your browser")
       return
@@ -75,7 +110,13 @@ export default function GeneratorPage() {
         setLoading(false)
       }
     )
-  }
+  }, [])
+
+  useEffect(() => {
+    if (autoGps && !result) {
+      handleGetCurrentLocation()
+    }
+  }, [autoGps, handleGetCurrentLocation])
 
   const handleMapClick = useCallback((newLat: number, newLng: number) => {
     generatePin({ latitude: newLat, longitude: newLng })
@@ -121,24 +162,57 @@ export default function GeneratorPage() {
 
                 {activeTab === "address" ? (
                   <form onSubmit={handleAddressSubmit} className="space-y-4">
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">Full Address</label>
-                      <input
-                        type="text"
-                        value={address}
-                        onChange={(e) => setAddress(e.target.value)}
-                        placeholder="e.g., Mysore Palace, Karnataka"
-                        className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:outline-none focus:border-primary transition-colors"
-                      />
+                    <div className="flex gap-2 mb-4">
+                      <button 
+                        type="button"
+                        onClick={() => setAddressMode("paste")}
+                        className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors ${addressMode === "paste" ? "bg-primary/20 text-primary" : "bg-black/5 dark:bg-white/5 text-muted-foreground"}`}
+                      >
+                        Paste Full Address
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => setAddressMode("structured")}
+                        className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors ${addressMode === "structured" ? "bg-primary/20 text-primary" : "bg-black/5 dark:bg-white/5 text-muted-foreground"}`}
+                      >
+                        Structured Form
+                      </button>
                     </div>
+
+                    {addressMode === "paste" ? (
+                      <div>
+                        <textarea
+                          rows={4}
+                          value={address}
+                          onChange={(e) => setAddress(e.target.value)}
+                          placeholder="e.g., 123 Main St, Appt 4B, Springfield, IL 62701, USA"
+                          className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:outline-none focus:border-primary transition-colors resize-none"
+                        />
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <input type="text" placeholder="House/Flat No." value={structuredAddress.houseNumber} onChange={(e) => setStructuredAddress({...structuredAddress, houseNumber: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:border-primary" />
+                          <input type="text" placeholder="Street Name" value={structuredAddress.street} onChange={(e) => setStructuredAddress({...structuredAddress, street: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:border-primary" />
+                        </div>
+                        <input type="text" placeholder="Area / Locality / Village" value={structuredAddress.area} onChange={(e) => setStructuredAddress({...structuredAddress, area: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:border-primary" />
+                        <div className="grid grid-cols-2 gap-3">
+                          <input type="text" placeholder="City / Town" value={structuredAddress.city} onChange={(e) => setStructuredAddress({...structuredAddress, city: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:border-primary" />
+                          <input type="text" placeholder="State" value={structuredAddress.state} onChange={(e) => setStructuredAddress({...structuredAddress, state: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:border-primary" />
+                        </div>
+                        <input type="text" placeholder="Country" value={structuredAddress.country} onChange={(e) => setStructuredAddress({...structuredAddress, country: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:border-primary" />
+                      </div>
+                    )}
+
                     <button 
                       type="submit" 
-                      disabled={loading || !address.trim()}
-                      className="w-full py-3 bg-primary hover:bg-primary/90 text-white rounded-xl font-medium transition-all disabled:opacity-70 flex justify-center items-center gap-2"
+                      disabled={loading || (addressMode === "paste" ? !address.trim() : !structuredAddress.city)}
+                      className="w-full py-3 bg-primary hover:bg-primary/90 text-white rounded-xl font-medium transition-all disabled:opacity-70 flex justify-center items-center gap-2 mt-4"
                     >
                       {loading ? <span className="animate-pulse">Processing...</span> : "Generate DIGIPIN"}
                     </button>
                   </form>
+
                 ) : (
                   <form onSubmit={handleCoordsSubmit} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
@@ -192,27 +266,46 @@ export default function GeneratorPage() {
               </div>
 
               {result && (
-                <div className="glass p-8 rounded-3xl text-center border-primary/20 bg-primary/5">
+                <div className="glass p-8 rounded-3xl border-primary/20 bg-primary/5 flex flex-col items-center">
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">Generated DIGIPIN</h3>
-                  <div className="text-4xl font-bold tracking-widest text-primary mb-6 py-4 bg-white/50 dark:bg-black/50 rounded-2xl shadow-inner">
+                  <div className="text-4xl font-bold tracking-widest text-primary mb-6 py-4 px-8 bg-white/50 dark:bg-black/50 rounded-2xl shadow-inner w-full text-center">
                     {result.digipin}
                   </div>
-                  <p className="text-sm text-muted-foreground mb-6 line-clamp-2">
+                  <p className="text-sm text-muted-foreground mb-6 line-clamp-2 text-center">
                     {result.address}
                   </p>
-                  <div className="grid grid-cols-3 gap-2">
-                    <button onClick={handleCopy} className="flex flex-col items-center justify-center gap-2 p-3 rounded-xl hover:bg-primary/10 transition-colors text-sm font-medium">
+                  
+                  <div className="grid grid-cols-2 gap-4 w-full mb-8">
+                    <button onClick={handleCopy} className="flex flex-col items-center justify-center gap-2 p-3 rounded-xl hover:bg-primary/10 transition-colors text-sm font-medium bg-black/5 dark:bg-white/5">
                       {copied ? <Check className="w-5 h-5 text-emerald-500" /> : <Copy className="w-5 h-5" />}
-                      <span>{copied ? "Copied" : "Copy"}</span>
+                      <span>{copied ? "Copied" : "Copy PIN"}</span>
                     </button>
-                    <button className="flex flex-col items-center justify-center gap-2 p-3 rounded-xl hover:bg-primary/10 transition-colors text-sm font-medium">
+                    <button 
+                      onClick={async () => {
+                        if (navigator.share) {
+                          try {
+                            await navigator.share({
+                              title: `DIGIPIN Location: ${result.digipin}`,
+                              text: `Check out this exact location at DIGIPIN ${result.digipin}:\n${result.address}`,
+                              url: `${window.location.origin}/location/${result.digipin}`,
+                            })
+                          } catch (err) {}
+                        } else {
+                          handleCopy()
+                        }
+                      }}
+                      className="flex flex-col items-center justify-center gap-2 p-3 rounded-xl hover:bg-primary/10 transition-colors text-sm font-medium bg-black/5 dark:bg-white/5"
+                    >
                       <Share2 className="w-5 h-5" />
                       <span>Share</span>
                     </button>
-                    <button className="flex flex-col items-center justify-center gap-2 p-3 rounded-xl hover:bg-primary/10 transition-colors text-sm font-medium">
-                      <Bookmark className="w-5 h-5" />
-                      <span>Save</span>
-                    </button>
+                  </div>
+
+                  <div className="w-full">
+                    <QRCodeGenerator 
+                      value={`${typeof window !== 'undefined' ? window.location.origin : 'https://digipin.io'}/location/${result.digipin}`} 
+                      title="Location QR Code"
+                    />
                   </div>
                 </div>
               )}
@@ -234,5 +327,17 @@ export default function GeneratorPage() {
       </main>
       <Footer />
     </div>
+  )
+}
+
+export default function GeneratorPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-black/5 dark:bg-white/5">
+        <Loader2 className="w-12 h-12 animate-spin text-primary" />
+      </div>
+    }>
+      <GeneratorContent />
+    </Suspense>
   )
 }

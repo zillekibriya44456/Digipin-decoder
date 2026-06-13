@@ -5,15 +5,41 @@ import { Footer } from "@/components/Footer"
 import { Map } from "@/components/Map"
 import { MapPin, Navigation, Share2, Compass } from "lucide-react"
 
-export default async function LocationPage({ params }: { params: { slug: string } }) {
-  const place = await prisma.savedPlace.findUnique({
-    where: { slug: params.slug, isPublic: true }
+import { getLatLngFromDigiPin } from "digipinjs"
+
+export default async function LocationPage(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
+  const slug = params.slug
+
+  let place = await prisma.savedPlace.findUnique({
+    where: { slug, isPublic: true }
   })
 
-  if (!place) {
-    // If we don't find it in the DB, maybe it's just a raw DIGIPIN?
-    // In a real app, we'd handle raw DIGIPINs via URL decoding.
-    notFound()
+  let latitude = 0;
+  let longitude = 0;
+  let title = "Shared Location";
+  let address = "Location details";
+  let digipinStr = slug.toUpperCase();
+  let category = "SHARED";
+
+  if (place) {
+    latitude = place.latitude;
+    longitude = place.longitude;
+    title = place.title || title;
+    address = place.address || address;
+    digipinStr = place.digipin;
+    category = place.category;
+  } else {
+    // Attempt to decode as raw DIGIPIN
+    try {
+      const coords = getLatLngFromDigiPin(digipinStr)
+      if (!coords) throw new Error("Invalid")
+      latitude = coords.latitude
+      longitude = coords.longitude
+      address = "View exact details in Decoder"
+    } catch (e) {
+      notFound()
+    }
   }
 
   return (
@@ -25,16 +51,16 @@ export default async function LocationPage({ params }: { params: { slug: string 
             <div className="glass p-8 rounded-3xl mb-8 flex flex-col md:flex-row gap-8 items-center md:items-start justify-between">
               <div>
                 <div className="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold mb-4 uppercase tracking-wider">
-                  {place.category}
+                  {category}
                 </div>
-                <h1 className="text-3xl md:text-4xl font-bold mb-2">{place.title || "Shared Location"}</h1>
+                <h1 className="text-3xl md:text-4xl font-bold mb-2">{title}</h1>
                 <p className="text-muted-foreground flex items-center gap-2">
-                  <MapPin className="w-5 h-5 text-primary" /> {place.address}
+                  <MapPin className="w-5 h-5 text-primary" /> {address}
                 </p>
               </div>
               <div className="text-center bg-white/50 dark:bg-black/50 p-6 rounded-2xl shadow-inner min-w-[200px]">
                 <p className="text-sm font-semibold text-muted-foreground uppercase mb-1">DIGIPIN</p>
-                <p className="text-3xl font-bold tracking-widest text-primary">{place.digipin}</p>
+                <p className="text-3xl font-bold tracking-widest text-primary">{digipinStr}</p>
               </div>
             </div>
 
@@ -45,7 +71,7 @@ export default async function LocationPage({ params }: { params: { slug: string 
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Coordinates</p>
-                  <p className="font-medium font-mono">{place.latitude.toFixed(6)}, {place.longitude.toFixed(6)}</p>
+                  <p className="font-medium font-mono">{latitude.toFixed(6)}, {longitude.toFixed(6)}</p>
                 </div>
               </div>
               <div className="glass p-6 rounded-2xl flex items-center gap-4 cursor-pointer hover:bg-white/60 dark:hover:bg-black/50 transition-colors">
@@ -53,7 +79,7 @@ export default async function LocationPage({ params }: { params: { slug: string 
                   <Navigation className="w-6 h-6" />
                 </div>
                 <div>
-                  <a href={`https://www.google.com/maps/dir/?api=1&destination=${place.latitude},${place.longitude}`} target="_blank" rel="noreferrer" className="font-medium">
+                  <a href={`https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`} target="_blank" rel="noreferrer" className="font-medium">
                     Navigate Here
                   </a>
                   <p className="text-sm text-muted-foreground">Open in Google Maps</p>
@@ -71,7 +97,7 @@ export default async function LocationPage({ params }: { params: { slug: string 
             </div>
 
             <div className="h-[500px] glass p-2 rounded-3xl relative overflow-hidden">
-              <Map lat={place.latitude} lng={place.longitude} zoom={16} />
+              <Map lat={latitude} lng={longitude} zoom={16} />
             </div>
           </div>
         </div>

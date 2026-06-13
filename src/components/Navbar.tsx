@@ -2,14 +2,72 @@
 
 import Link from "next/link"
 import { useTheme } from "next-themes"
-import { MapPin, Moon, Sun, Menu } from "lucide-react"
+import { MapPin, Moon, Sun, Menu, AlertTriangle } from "lucide-react"
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 
 export function Navbar() {
+  const router = useRouter()
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [sosLoading, setSosLoading] = useState(false)
+
+  const handleSOS = () => {
+    if (!confirm("Are you sure you want to trigger an EMERGENCY SOS? This will broadcast your live location.")) return
+    
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser")
+      return
+    }
+
+    setSosLoading(true)
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const lat = position.coords.latitude
+          const lng = position.coords.longitude
+          
+          // Use internal generator to get DIGIPIN and Address
+          const genRes = await fetch("/api/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ latitude: lat, longitude: lng })
+          })
+          const genData = await genRes.json()
+
+          // Trigger SOS
+          const sosRes = await fetch("/api/sos", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              digipin: genData.digipin || "UNKNOWN",
+              latitude: lat,
+              longitude: lng,
+              address: genData.address || "Unknown Location"
+            })
+          })
+          const sosData = await sosRes.json()
+          
+          if (sosData.success) {
+            router.push(`/sos/${sosData.sosId}`)
+          } else {
+            alert("Failed to trigger SOS")
+          }
+        } catch (e) {
+          console.error(e)
+          alert("Error triggering SOS")
+        } finally {
+          setSosLoading(false)
+        }
+      },
+      (err) => {
+        alert("Unable to retrieve your location for SOS")
+        setSosLoading(false)
+      }
+    )
+  }
 
   useEffect(() => {
     setMounted(true)
@@ -45,6 +103,15 @@ export function Navbar() {
         </div>
 
         <div className="flex items-center gap-4">
+          <button 
+            onClick={handleSOS}
+            disabled={sosLoading}
+            className="hidden md:flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-destructive hover:bg-destructive/90 rounded-full shadow-lg shadow-destructive/25 transition-all hover:scale-105 active:scale-95 animate-pulse"
+          >
+            {sosLoading ? <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></span> : <AlertTriangle className="w-4 h-4" />}
+            SOS
+          </button>
+          
           {mounted && (
             <button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}

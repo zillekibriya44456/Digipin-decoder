@@ -21,19 +21,42 @@ export function AIAssistant() {
     setInput("")
     setIsTyping(true)
 
-    // Mock AI Response processing
-    setTimeout(() => {
-      let responseContent = "I can help with that! However, I am currently running in demo mode. Try asking about a specific DIGIPIN."
-      
-      if (userMessage.toLowerCase().includes("hospital")) {
-        responseContent = "I found 3 hospitals nearby. The closest is City Hospital (1.2 km away). DIGIPIN: 8H2-K9L-M4N."
-      } else if (userMessage.toLowerCase().includes("generate") || userMessage.toLowerCase().includes("mysore")) {
-        responseContent = "The DIGIPIN for Mysore Palace is 73P-428-RJC8. It is located at 12.3052° N, 76.6552° E."
+    try {
+      let responseContent = "I can help with that! However, I couldn't understand the specific location. Try asking for a DIGIPIN for an address, or nearby places."
+      const lowerMsg = userMessage.toLowerCase()
+
+      if (lowerMsg.includes("generate") || lowerMsg.includes("pin for") || lowerMsg.includes("address")) {
+        // Extract address roughly
+        const address = userMessage.replace(/generate|pin for|address|what is the digipin for/gi, "").trim()
+        if (address) {
+          const res = await fetch("/api/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ address })
+          })
+          const data = await res.json()
+          if (data.digipin) {
+            responseContent = `The DIGIPIN for ${address} is **${data.digipin}**. It's located at ${data.latitude.toFixed(4)}, ${data.longitude.toFixed(4)}.\nDIGIPIN:${data.digipin}`
+          } else {
+            responseContent = `Sorry, I couldn't generate a PIN for ${address}.`
+          }
+        }
+      } 
+      else if (lowerMsg.includes("hospital") || lowerMsg.includes("school") || lowerMsg.includes("atm")) {
+        // Default to center of India if no GPS
+        let lat = 20.5937
+        let lng = 78.9629
+        let type = lowerMsg.includes("hospital") ? "hospital" : lowerMsg.includes("school") ? "school" : "atm"
+        
+        responseContent = `I can search for ${type}s, but I need your coordinates first! Try generating a DIGIPIN for your location.`
       }
 
       setMessages(prev => [...prev, { role: "ai", content: responseContent }])
+    } catch (e) {
+      setMessages(prev => [...prev, { role: "ai", content: "Sorry, I encountered an error." }])
+    } finally {
       setIsTyping(false)
-    }, 1500)
+    }
   }
 
   return (

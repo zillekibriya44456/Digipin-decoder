@@ -5,8 +5,8 @@ export function Footer() {
   return (
     <footer className="border-t border-white/10 bg-black/5 dark:bg-white/5 backdrop-blur-md pt-16 pb-8 mt-20">
       <div className="container mx-auto px-4 md:px-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
-          <div className="col-span-1 md:col-span-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-12 mb-12">
+          <div className="col-span-1 md:col-span-3 lg:col-span-2">
             <Link href="/" className="flex items-center gap-2 mb-4">
               <MapPin className="w-6 h-6 text-primary" />
               <span className="text-xl font-bold">DIGIPIN</span>
@@ -56,7 +56,7 @@ export function Footer() {
         </div>
         
         <div className="border-t border-white/10 pt-8 text-center text-sm text-muted-foreground">
-          <p>© {new Date().getFullYear()} DIGIPIN Enterprise. All rights reserved. Powered by India Post & OpenStreetMap.</p>
+          <p>© {new Date().getFullYear()} ZilVerse Technologies. All rights reserved.</p>
         </div>
       </div>
     </footer>
