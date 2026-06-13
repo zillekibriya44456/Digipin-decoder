@@ -13,7 +13,42 @@ const outfit = Outfit({
 export const metadata: Metadata = {
   title: "DIGIPIN | Enterprise Location Intelligence",
   description: "Decode, generate, and manage locations with precision using the world's most advanced DIGIPIN platform.",
-  keywords: ["DIGIPIN", "Location", "Maps", "Coordinates", "GPS"],
+  keywords: ["DIGIPIN", "Location", "Maps", "Coordinates", "GPS", "Location Intelligence", "Logistics", "Routing"],
+  authors: [{ name: "DIGIPIN Enterprise" }],
+  creator: "DIGIPIN",
+  publisher: "DIGIPIN",
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  metadataBase: new URL("https://digipin.io"),
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    title: 'DIGIPIN | Enterprise Location Intelligence',
+    description: "Decode, generate, and manage locations with precision using the world's most advanced DIGIPIN platform.",
+    url: 'https://digipin.io',
+    siteName: 'DIGIPIN',
+    images: [
+      {
+        url: 'https://digipin.io/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'DIGIPIN Platform',
+      },
+    ],
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'DIGIPIN | Enterprise Location Intelligence',
+    description: "Decode, generate, and manage locations with precision.",
+    creator: '@digipin_app',
+    images: ['https://digipin.io/og-image.png'],
+  },
 };
 
 export default function RootLayout({
